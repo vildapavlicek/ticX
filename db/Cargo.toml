@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = { version = "0.5.7", features = ["postgres"] }
+sqlx = { version = "0.5.7", features = ["postgres", "runtime-actix-native-tls", "chrono", "migrate"] }
 
 thiserror = "1.0.29"
