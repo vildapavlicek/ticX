@@ -7,8 +7,10 @@ mod routes;
 pub async fn start() {
     actix_web::HttpServer::new(|| {
         actix_web::App::new()
-            .service(routes::user_routes())
             .service(routes::index)
+            .service(routes::user_routes())
+            .service(routes::ticket_routes())
+            .service(routes::token_routes())
             .wrap(RequestTracing::new())
     })
     .bind("127.0.0.1:8080")

@@ -1,4 +1,4 @@
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Queryable)]
 pub struct Ticket {
     id: i32,
     author_id: i32,
@@ -8,7 +8,7 @@ pub struct Ticket {
     created: chrono::Local,
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Queryable)]
 pub struct User {
     id: i32,
     username: String,

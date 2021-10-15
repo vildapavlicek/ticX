@@ -1,4 +1,5 @@
 mod ticket;
+mod token;
 mod user;
 
 use actix_web::get;
@@ -31,6 +32,10 @@ macro_rules! routes {
 
 routes!(user_routes, user);
 routes!(ticket_routes, ticket);
+
+pub fn token_routes() -> actix_web::Scope {
+    actix_web::Scope::new("token").service(token::get)
+}
 
 // pub(crate) fn user_routes() -> actix_web::Scope {
 //     actix_web::Scope::new("user")

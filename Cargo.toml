@@ -13,6 +13,8 @@ members = [
 
 [dependencies]
 actix-web = { version = "3.3.2" }
+actix-web-httpauth = "0.5.1"
+
 thiserror = "1.0.29"
 
 opentelemetry = "0.16.0"
@@ -25,5 +27,8 @@ tracing-opentelemetry = "0.15.0"
 serde = { version = "1.0.130", features = ["derive"] }
 opentelemetry-zipkin = "0.14.0"
 actix-web-opentelemetry = "0.10.0"
+
+jsonwebtoken = "7.2.0"
+
 
 

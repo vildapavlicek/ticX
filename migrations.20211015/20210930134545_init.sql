@@ -16,3 +16,5 @@ CREATE TABLE IF NOT EXISTS tickets (
     status smallint,
     created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE EXTENSION pgcrypto;
