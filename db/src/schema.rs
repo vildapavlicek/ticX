@@ -1,10 +1,10 @@
 table! {
     tickets (id) {
         id -> Int4,
-        author_id -> Nullable<Int4>,
+        author_id -> Int4,
         description -> Varchar,
-        severity -> Nullable<Int2>,
-        status -> Nullable<Int2>,
+        severity -> Int2,
+        status -> Int2,
         created -> Timestamptz,
     }
 }
@@ -22,7 +22,4 @@ table! {
 
 joinable!(tickets -> users (author_id));
 
-allow_tables_to_appear_in_same_query!(
-    tickets,
-    users,
-);
+allow_tables_to_appear_in_same_query!(tickets, users,);
