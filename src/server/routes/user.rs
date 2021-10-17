@@ -4,9 +4,18 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
-    name: String,
+    username: String,
+    password: String,
+    firstname: String,
+    lastname: String,
     id: Option<usize>,
     role: String,
+}
+
+impl From<User> for db::dbo::NewUser {
+    fn from(user: User) -> db::dbo::NewUser {
+        db::dbo::NewUser::new(user.username, user.password, user.firstname, user.lastname)
+    }
 }
 
 #[get("/{id}")]
@@ -18,7 +27,10 @@ pub async fn get(id: web::Path<usize>, db: web::Data<Db>) -> String {
 #[post("")]
 #[tracing::instrument(skip(db))]
 pub async fn post(json: web::Json<User>, db: web::Data<Db>) -> String {
-    format!("creating new user: {:#?}", json)
+    match web::block(move || db.insert_user(json.into_inner().into())).await {
+        Ok(_) => String::from("insert OK"),
+        Err(e) => format!("insert failed: {}", e),
+    }
 }
 
 #[put("")]

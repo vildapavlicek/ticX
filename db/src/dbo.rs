@@ -42,20 +42,19 @@ pub struct User {
 
 #[derive(Debug, Insertable)]
 #[table_name = "users"]
-pub struct NewUser<'a> {
-    pub(crate) username: &'a str,
+pub struct NewUser /*<'a>*/ {
+    /* pub(crate) username: &'a str,
     pub(crate) password: &'a str,
     pub(crate) firstname: &'a str,
-    pub(crate) lastname: &'a str,
+    pub(crate) lastname: &'a str, */
+    pub(crate) username: String,
+    pub(crate) password: String,
+    pub(crate) firstname: String,
+    pub(crate) lastname: String,
 }
 
-impl<'a> NewUser<'a> {
-    pub fn new(
-        username: &'a str,
-        password: &'a str,
-        firstname: &'a str,
-        lastname: &'a str,
-    ) -> Self {
+impl NewUser /* <'a> */ {
+    pub fn new(username: String, password: String, firstname: String, lastname: String) -> Self {
         NewUser {
             username,
             password,
