@@ -2,8 +2,11 @@ mod app;
 mod server;
 mod tracer;
 
+use dotenv::dotenv;
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
     let _guard = tracer::init();
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "ticX App starting");
 
