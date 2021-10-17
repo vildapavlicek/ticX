@@ -28,17 +28,24 @@ pub struct Db {
 }
 
 impl Db {
+    #[tracing::instrument]
     pub fn connect(uri: &str) -> DbResult<Db> {
+        tracing::trace!("inside DB");
         let manager = ConnectionManager::<PgConnection>::new(uri);
+        tracing::trace!("ConnectionManager created");
         diesel::r2d2::Builder::new()
-            .connection_timeout(std::time::Duration::from_secs(5)) // todo make this configurable
-            .max_size(5) // todo make this configurable
+            // .connection_timeout(std::time::Duration::from_secs(15)) // todo make this configurable
+            .max_size(1) // todo make this configurable
             .build(manager)
             .map(|conn| {
                 tracing::trace!(%uri, "connected to DB");
+                println!("connected to db");
                 Db { inner: conn }
             })
-            .map_err(|err| DbError::connection_error(uri, err))
+            .map_err(|err| {
+                println!("db connection error: {}", err);
+                DbError::connection_error(uri, err)
+            })
     }
 
     fn get_conn(

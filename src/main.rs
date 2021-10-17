@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "ticX App starting");
 
     crate::app::TicXApp::run().await?;
+    tracing::trace!("server shutdown");
 
     Ok(())
 }
