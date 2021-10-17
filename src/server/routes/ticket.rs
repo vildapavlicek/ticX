@@ -1,6 +1,7 @@
 use actix_web::{delete, get, post, put, web, Responder};
 use db::Db;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Ticket {
@@ -12,24 +13,24 @@ pub struct Ticket {
 
 #[get("/{id}")]
 #[tracing::instrument(skip(db))]
-pub async fn get(id: web::Path<usize>, db: web::Data<Db>) -> String {
+pub async fn get(id: web::Path<usize>, db: web::Data<Arc<Db>>) -> String {
     format!("Got user id {}, name Antik", id)
 }
 
 #[post("")]
 #[tracing::instrument(skip(db))]
-pub async fn post(json: web::Json<Ticket>, db: web::Data<Db>) -> String {
+pub async fn post(json: web::Json<Ticket>, db: web::Data<Arc<Db>>) -> String {
     format!("creating new user: {:#?}", json)
 }
 
 #[put("")]
 #[tracing::instrument(skip(db))]
-pub async fn put(json: web::Json<Ticket>, db: web::Data<Db>) -> String {
+pub async fn put(json: web::Json<Ticket>, db: web::Data<Arc<Db>>) -> String {
     format!("updating existing user: {:#?}", json)
 }
 
 #[delete("/{id}")]
 #[tracing::instrument(skip(db))]
-pub async fn delete(id: web::Path<usize>, db: web::Data<Db>) -> String {
+pub async fn delete(id: web::Path<usize>, db: web::Data<Arc<Db>>) -> String {
     format!("deleting user id {}", id)
 }
