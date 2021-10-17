@@ -1,22 +1,22 @@
 use crate::schema::{tickets, users};
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, AsChangeset)]
 pub struct Ticket {
-    id: i32,
-    author_id: i32,
-    description: String,
-    severity: i16,
-    status: i16,
-    created: chrono::NaiveDateTime,
+    pub(crate) id: i32,
+    pub(crate) author_id: i32,
+    pub(crate) description: String,
+    pub(crate) severity: i16,
+    pub(crate) status: i16,
+    pub(crate) created: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, Insertable)]
 #[table_name = "tickets"]
 pub struct NewTicket<'a> {
-    author_id: i32,
-    description: &'a str,
-    severity: i16,
-    status: i16,
+    pub(crate) author_id: i32,
+    pub(crate) description: &'a str,
+    pub(crate) severity: i16,
+    pub(crate) status: i16,
 }
 
 impl<'a> NewTicket<'a> {
@@ -30,23 +30,23 @@ impl<'a> NewTicket<'a> {
     }
 }
 
-#[derive(Debug, Queryable)]
+#[derive(Debug, Queryable, AsChangeset)]
 pub struct User {
-    id: i32,
-    username: String,
-    password: String,
-    firstname: String,
-    lastname: String,
-    created: chrono::NaiveDateTime,
+    pub(crate) id: i32,
+    pub(crate) username: String,
+    pub(crate) password: String,
+    pub(crate) firstname: String,
+    pub(crate) lastname: String,
+    pub(crate) created: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, Insertable)]
 #[table_name = "users"]
 pub struct NewUser<'a> {
-    username: &'a str,
-    password: &'a str,
-    firstname: &'a str,
-    lastname: &'a str,
+    pub(crate) username: &'a str,
+    pub(crate) password: &'a str,
+    pub(crate) firstname: &'a str,
+    pub(crate) lastname: &'a str,
 }
 
 impl<'a> NewUser<'a> {

@@ -12,6 +12,8 @@ pub enum DbError {
     NoConnectionAvailable(String),
     #[error("failed to insert into {table}. Reason: {error}")]
     InsertError { table: &'static str, error: String },
+    #[error("failed to update {what}. Reason: {error}")]
+    UpdateError { what: &'static str, error: String },
 }
 
 impl DbError {
@@ -23,11 +25,11 @@ impl DbError {
         }
     }
 
-    pub(crate) fn migration_failure<T: std::fmt::Display>(err: T) -> Self {
-        tracing::error!(%err, "failed to run migrations to set up DB");
-        Self::MigrationFailure(err.to_string())
-    }
-
+    /*     pub(crate) fn migration_failure<T: std::fmt::Display>(err: T) -> Self {
+           tracing::error!(%err, "failed to run migrations to set up DB");
+           Self::MigrationFailure(err.to_string())
+       }
+    */
     pub(crate) fn query_error<T: std::fmt::Display>(query: &'static str, err: T) -> Self {
         tracing::error!(%query, %err, "failed to execute query");
         Self::QueryExecuteError {
@@ -48,6 +50,14 @@ impl DbError {
         tracing::error!(%table, %err, "failed to insert data into table");
         Self::InsertError {
             table,
+            error: err.to_string(),
+        }
+    }
+
+    pub(crate) fn update_error<T: std::fmt::Display>(what: &'static str, err: T) -> Self {
+        tracing::error!(%what, %err, "failed to update data");
+        Self::UpdateError {
+            what,
             error: err.to_string(),
         }
     }

@@ -2179,6 +2179,7 @@ dependencies = [
  "actix-web",
  "actix-web-httpauth",
  "actix-web-opentelemetry",
+ "db",
  "jsonwebtoken",
  "opentelemetry 0.16.0",
  "opentelemetry-zipkin",
