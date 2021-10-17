@@ -34,7 +34,10 @@ impl Db {
             .connection_timeout(std::time::Duration::from_secs(5)) // todo make this configurable
             .max_size(5) // todo make this configurable
             .build(manager)
-            .map(|conn| Db { inner: conn })
+            .map(|conn| {
+                tracing::trace!(%uri, "connected to DB");
+                Db { inner: conn }
+            })
             .map_err(|err| DbError::connection_error(uri, err))
     }
 

@@ -4,7 +4,9 @@ use std::sync::Arc;
 
 mod routes;
 
+#[tracing::instrument(skip(db))]
 pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::trace!("starting server");
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .service(routes::index)
