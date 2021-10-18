@@ -14,41 +14,29 @@ macro_rules! routes {
         pub(crate) fn $name() -> actix_web::Scope {
             actix_web::Scope::new(std::stringify!($module))
                 .service($module::get)
+                .service($module::get_all)
                 .service($module::post)
                 .service($module::put)
                 .service($module::delete)
         }
     };
-    ($name:ident, $module:ident, $method_name:ident) => {
+    ($name:ident, $module:ident, $($method_name:ident)&+) => {
         pub(crate) fn $name() -> actix_web::Scope {
-            actix_web::Scope::new(std::stringify!($module))
-                .service($module::$method_name)
-                .service($module::$method_name)
-                .service($module::$method_name)
-                .service($module::$method_name)
+            let mut scope = actix_web::Scope::new(std::stringify!($module));
+            $(
+                scope = scope.service($module::$method_name);
+            )*
+            scope
         }
     };
 }
 
 routes!(user_routes, user);
 routes!(ticket_routes, ticket);
+routes!(token_routes, token, get);
 
-pub fn token_routes() -> actix_web::Scope {
-    actix_web::Scope::new("token").service(token::get)
-}
-
-// pub(crate) fn user_routes() -> actix_web::Scope {
-//     actix_web::Scope::new("user")
-//         .service(user::get)
-//         .service(user::post)
-//         .service(user::put)
-//         .service(user::delete)
-// }
-//
-// pub(crate) fn ticket_routes() -> actix_web::Scope {
-//     actix_web::Scope::new("ticket")
-//         .service(ticket::get)
-//         .service(ticket::post)
-//         .service(ticket::put)
-//         .service(ticket::delete)
-// }
+// routes!(
+//     test_name,
+//     test_module,
+//     get_method & post_method & put_method
+// );
