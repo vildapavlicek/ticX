@@ -1,0 +1,2 @@
+# TicX
+is my personal project to learn Diesel, Actix web framework and about tracing and metrics. It should be simple bug tracking back-end server backed by Postgres. This project is not meant to be production ready application but rather something I can use to learn new things I'm interested in.
