@@ -10,10 +10,13 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .data(db.clone())
-            .service(routes::index)
-            .service(routes::user_routes())
-            .service(routes::ticket_routes())
-            .service(routes::token_routes())
+            .service(
+                actix_web::Scope::new("/api")
+                    .service(routes::index)
+                    .service(routes::user_routes())
+                    .service(routes::ticket_routes())
+                    .service(routes::token_routes()), // .wrap(actix_web_httpauth::middleware::HttpAuthentication::bearer()),
+            )
             .wrap(RequestTracing::new())
             .wrap(Logger::default())
     })
