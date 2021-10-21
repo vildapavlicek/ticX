@@ -15,15 +15,37 @@ pub enum TicxError {
     },
     #[error("Parsed JWT token is NOT valid. Reason: {0}")]
     InvalidToken(String),
+    #[error("Provided invalid credentials")]
+    InvalidCredentials,
+    #[error("Something really strange or unexpected has happened")]
+    Unknown,
+    #[error("Failed to execute DB Query properly. Reason: {0}")]
+    DbFail(String),
 }
 
 // this shows error because it cannot indetify std::fmt::Display being derived
 impl actix_web::error::ResponseError for TicxError {
     fn status_code(&self) -> StatusCode {
         match self {
-            TicxError::MissingAuthHeader => StatusCode::BAD_REQUEST,
-            TicxError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
+            Self::MissingAuthHeader => StatusCode::BAD_REQUEST,
+            Self::InvalidToken(_) => StatusCode::UNAUTHORIZED,
+            Self::InvalidCredentials => StatusCode::FORBIDDEN,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
+
+// use db::errors::DbError;
+// impl From<DbError> for TicxError {
+//     fn from(db_error: DbError) -> Self {
+//         match db_error {
+//             DbError::InvalidResult => Self::Unknown,
+//             DbError::InsertError { .. }
+//             | DbError::UpdateError { .. }
+//             | DbError::QueryExecuteError { .. } => Self::DbFail(db_error.to_string()),
+//             // DbError::NoConnectionAvailable(_) => (),
+//             // DbError::NotFound(_) => (),
+//             _ => Self::Unknown,
+//         }
+//     }
+// }

@@ -77,10 +77,9 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        // let span = tracing::span!(tracing::Level::TRACE, "BasicAuthService");
-        // let guard = span.enter();
-
         tracing_span!(TRACE, BasicAuthService, guard);
+
+        tracing::trace!("parsing credentials from headers");
 
         let credentials: super::routes::auth::Credentials = match req
             .headers()
@@ -88,23 +87,36 @@ where
             .ok_or(TicxError::MissingAuthHeader)
             .and_then(|header_value| super::routes::auth::Credentials::try_from(header_value))
         {
-            Ok(credentials) => credentials,
-            Err(e) => return box_error(e), //Box::pin(async move { Err(e.into()) }),
+            Ok(credentials) => {
+                tracing::trace!("basic auth credentials parsed");
+                credentials
+            }
+            Err(e) => {
+                tracing::error!( err = %e, "failed to parse basic auth credentials");
+                return box_error(e);
+            }
         };
 
-        let _ = self
+        tracing::trace!(
+            username = credentials.username(),
+            "checking username & password"
+        );
+
+        if let Err(e) = self
             .db
             .check_credentials(credentials.username(), credentials.password())
             .map_err(|err| {
-                tracing::error!(%err, "credentials do not match");
-                err // todo map this error to denied
+                tracing::error!(%err, "no user found for provided credentials");
+                TicxError::InvalidCredentials
             })
-            .and_then(|u| {
-                tracing::trace!(?u, "credentials match found user");
-                Ok(u)
-            });
+            .and_then(|user| {
+                tracing::trace!(?user, "credentials match for user");
+                Ok(user)
+            })
+        {
+            return box_error(TicxError::InvalidCredentials);
+        }
 
-        // Box::pin(self.service.call(req))
         drop(guard);
         pin_svc_call!(self, req)
     }
@@ -167,18 +179,25 @@ where
             jti: String,
         }
 
-        println!("hello from JWT middleware");
-
-        let raw_token: String = match parse_token(
-            req.headers()
-                .get(actix_web::http::header::AUTHORIZATION)
-                .expect("authorization header missing cannot parse token"),
-        ) {
-            Ok(v) => v,
+        let raw_token: String = match req
+            .headers()
+            .get(actix_web::http::header::AUTHORIZATION)
+            .and_then(|header_value| {
+                tracing::debug!(?header_value, "AUTHORIZATION header found");
+                Some(header_value)
+            })
+            .ok_or({
+                tracing::error!("AUTHORIZATION header not found");
+                TicxError::MissingAuthHeader
+            }) {
+            Ok(v) => match parse_token(v) {
+                Ok(t) => t,
+                Err(e) => return box_error(e),
+            },
             Err(e) => return box_error(e),
         };
 
-        let decoded = jsonwebtoken::decode::<Claims>(
+        if let Err(err) = jsonwebtoken::decode::<Claims>(
             raw_token.as_str(),
             &jsonwebtoken::DecodingKey::from_secret(self.secret.0.as_bytes()),
             &jsonwebtoken::Validation {
@@ -194,11 +213,10 @@ where
                 sub: None,
                 algorithms: vec![jsonwebtoken::Algorithm::HS512],
             },
-        )
-        .expect("token is invalid :( or some other problem");
-
-        let claims = decoded.claims;
-        let header = decoded.header;
+        ) {
+            tracing::error!(%raw_token, %err, "failed to decode JWT");
+            return box_error(TicxError::InvalidCredentials);
+        }
 
         drop(guard);
 
@@ -206,23 +224,32 @@ where
     }
 }
 
+#[tracing::instrument]
 fn parse_token(header_value: &HeaderValue) -> TicxResult<String> {
-    let value = header_value
-        .to_str()
-        .map_err(|err| TicxError::InvalidHeader {
+    tracing::trace!("parsing token from header value");
+    let value = header_value.to_str().map_err(|err| {
+        tracing::error!(%err, "failed to parse header value to string");
+        TicxError::InvalidHeader {
             header: "AUTHORIZATION",
             value: "failed to decode".into(),
             error: err.to_string(),
-        })?;
+        }
+    })?;
 
     value
         .split_once(' ')
-        .ok_or(TicxError::InvalidHeader {
-            header: "AUTHORIZATION",
-            value: value.to_string(),
-            error: "failed to retrieve token from header value".into(),
+        .ok_or({
+            tracing::error!("AUTHORIZATION token in invalid format. Expected 'Bearer {{JWT}}'");
+            TicxError::InvalidHeader {
+                header: "AUTHORIZATION",
+                value: value.to_string(),
+                error: "failed to retrieve token from header value".into(),
+            }
         })
-        .map(|(bearer, raw_token)| raw_token.to_string())
+        .map(|(bearer, raw_token)| {
+            tracing::trace!(%raw_token, "successfully parsed JWT from header");
+            raw_token.to_string()
+        })
 }
 
 fn box_error<B>(e: TicxError) -> Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, Error>>>> {

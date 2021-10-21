@@ -27,8 +27,8 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
             .service(
                 routes::auth_routes().wrap(middlewares::BasicAuthMiddleware { db: db.clone() }),
             )
-            .wrap(RequestTracing::new())
             .wrap(Logger::default())
+            .wrap(RequestTracing::new())
     })
     .bind("127.0.0.1:8080")
     .expect("failed to bind to localhost:8080")

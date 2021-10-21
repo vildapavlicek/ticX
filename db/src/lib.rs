@@ -85,7 +85,7 @@ impl Db {
             lastname.eq(user.lastname),
         ));
 
-        tracing::trace!(?query, "insert query"); //todo cannot use as it logs password :(
+        // tracing::trace!(?query, "insert query"); //also logs password, so uncomment if you need to debug query
 
         query
             .execute(&self.get_conn("insert user")?)
@@ -161,19 +161,17 @@ impl Db {
             .filter(schema::users::username.eq(usr))
             .filter(schema::users::password.eq(crypt(pwd, "gen_salt('bf', 8)")));
 
-        tracing::trace!(?query, "user authentication query");
-
-        // let found = query
-        //     .execute(&self.get_conn("user auth")?)
-        //     .map_err(|err| DbError::query_error("delete ticket", err))?;
+        // tracing::trace!(?query, "user authentication query"); this will also log passwords, so we cannot really keep it here
 
         let mut found = query
             .load::<dbo::User>(&self.get_conn("user auth")?)
             .map_err(|err| DbError::query_error("delete ticket", err))?;
 
         match found.len() {
+            0 => Err(DbError::not_found("user")),
             1 => Ok(found.pop().unwrap()),
-            _ => Err(DbError::not_found("user")),
+            // if we find more users with same name and password then we've reached some kind of invalid state
+            _ => Err(DbError::InvalidResult),
         }
     }
 }

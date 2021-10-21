@@ -16,6 +16,10 @@ pub enum DbError {
     UpdateError { what: &'static str, error: String },
     #[error("Requested resource '{0}' not found in database")]
     NotFound(&'static str),
+    #[error("Query result was unexpected")]
+    InvalidResult,
+    #[error("Unexpected error: {0}")]
+    Unknown(String),
 }
 
 impl DbError {
@@ -33,19 +37,20 @@ impl DbError {
        }
     */
 
-    pub(crate) fn resolve_diesel_error(err: diesel::result::Error, action: &'static str) {
-        match err {
-            diesel::result::Error::InvalidCString(_) => (),
-            diesel::result::Error::DatabaseError(_, _) => (),
-            diesel::result::Error::NotFound => (),
-            diesel::result::Error::QueryBuilderError(_) => (),
-            diesel::result::Error::DeserializationError(_) => (),
-            diesel::result::Error::SerializationError(_) => (),
-            diesel::result::Error::RollbackTransaction => (),
-            diesel::result::Error::AlreadyInTransaction => (),
-            _ => (),
-        }
-    }
+    // pub(crate) fn resolve_diesel_error(err: diesel::result::Error, action: &'static str) {
+    //     match err {
+    //         diesel::result::Error::InvalidCString(_) => (),
+    //         diesel::result::Error::DatabaseError(_, _) => (),
+    //         diesel::result::Error::NotFound => (),
+    //         diesel::result::Error::QueryBuilderError(_) => (),
+    //         diesel::result::Error::DeserializationError(_) => (),
+    //         diesel::result::Error::SerializationError(_) => (),
+    //         diesel::result::Error::RollbackTransaction => (),
+    //         diesel::result::Error::AlreadyInTransaction => (),
+    //         _ => (),
+    //     }
+    // }
+
     pub(crate) fn query_error<T: std::fmt::Display>(query: &'static str, err: T) -> Self {
         tracing::error!(%query, %err, "failed to execute query");
         Self::QueryExecuteError {
