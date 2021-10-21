@@ -11,10 +11,12 @@ use futures::{
     future::{err, ok, ready, Ready},
     Future,
 };
+use jsonwebtoken::{DecodingKey, Validation};
+use std::collections::HashMap;
 use std::{convert::TryFrom, pin::Pin, str::FromStr, sync::Arc};
 
-const ISS: &'static str = "TicX server";
-const AUD: &'static str = "TicX user";
+pub(crate) const ISS: &'static str = "TicX server";
+pub(crate) const AUD: &'static str = "TicX user";
 
 pub(crate) struct Secret(pub String);
 
@@ -71,7 +73,7 @@ impl FromRequest for Credentials {
     }
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct Claims {
     iss: &'static str,
     aud: &'static str,
@@ -110,10 +112,13 @@ pub(crate) async fn login(
         .await
         .unwrap(); // same as above
 
+    let secret = secret.into_inner();
+
     let token = jsonwebtoken::encode(
         &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS512),
         &Claims::new("subject 9".into()),
-        &jsonwebtoken::EncodingKey::from_secret(secret.into_inner().0.as_bytes()),
+        &jsonwebtoken::EncodingKey::from_secret(secret.0.as_bytes()),
     );
+
     token.unwrap()
 }

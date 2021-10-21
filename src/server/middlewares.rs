@@ -7,7 +7,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::errors::TicxError;
+use crate::errors::{TicxError, TicxResult};
 use actix_web::dev::Payload;
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
@@ -19,6 +19,19 @@ use futures::{
     future::{err, ok, ready, Ready},
     Future,
 };
+
+macro_rules! pin_svc_call {
+    ($me:ident, $req:ident) => {
+        Box::pin($me.service.call($req))
+    };
+}
+
+macro_rules! tracing_span {
+    ($level:ident, $name:expr, $guard:ident) => {
+        let span = tracing::span!(tracing::Level::$level, stringify!($name));
+        let $guard = span.enter();
+    };
+}
 
 pub(super) struct BasicAuthMiddleware {
     pub(super) db: Arc<Db>,
@@ -64,8 +77,10 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        let span = tracing::span!(tracing::Level::TRACE, "basic auth validator");
-        let _guard = span.enter();
+        // let span = tracing::span!(tracing::Level::TRACE, "BasicAuthService");
+        // let guard = span.enter();
+
+        tracing_span!(TRACE, BasicAuthService, guard);
 
         let credentials: super::routes::auth::Credentials = match req
             .headers()
@@ -74,7 +89,7 @@ where
             .and_then(|header_value| super::routes::auth::Credentials::try_from(header_value))
         {
             Ok(credentials) => credentials,
-            Err(e) => return Box::pin(async move { Err(e.into()) }),
+            Err(e) => return box_error(e), //Box::pin(async move { Err(e.into()) }),
         };
 
         let _ = self
@@ -89,9 +104,9 @@ where
                 Ok(u)
             });
 
-        let fut = self.service.call(req);
-
-        Box::pin(async move { fut.await })
+        // Box::pin(self.service.call(req))
+        drop(guard);
+        pin_svc_call!(self, req)
     }
 }
 
@@ -139,7 +154,77 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
+        tracing_span!(TRACE, JWTValidationService, guard);
+
+        #[derive(serde::Deserialize, Debug)]
+        struct Claims {
+            iss: String,
+            aud: String,
+            sub: String,
+            iat: i64,
+            exp: i64,
+            nbf: i64,
+            jti: String,
+        }
+
         println!("hello from JWT middleware");
-        Box::pin(self.service.call(req))
+
+        let raw_token: String = match parse_token(
+            req.headers()
+                .get(actix_web::http::header::AUTHORIZATION)
+                .expect("authorization header missing cannot parse token"),
+        ) {
+            Ok(v) => v,
+            Err(e) => return box_error(e),
+        };
+
+        let decoded = jsonwebtoken::decode::<Claims>(
+            raw_token.as_str(),
+            &jsonwebtoken::DecodingKey::from_secret(self.secret.0.as_bytes()),
+            &jsonwebtoken::Validation {
+                leeway: 10,
+                validate_exp: true,
+                validate_nbf: true,
+                aud: Some({
+                    let mut set = std::collections::HashSet::new();
+                    set.insert(super::routes::auth::AUD.to_owned());
+                    set
+                }),
+                iss: Some(super::routes::auth::ISS.into()),
+                sub: None,
+                algorithms: vec![jsonwebtoken::Algorithm::HS512],
+            },
+        )
+        .expect("token is invalid :( or some other problem");
+
+        let claims = decoded.claims;
+        let header = decoded.header;
+
+        drop(guard);
+
+        pin_svc_call!(self, req)
     }
+}
+
+fn parse_token(header_value: &HeaderValue) -> TicxResult<String> {
+    let value = header_value
+        .to_str()
+        .map_err(|err| TicxError::InvalidHeader {
+            header: "AUTHORIZATION",
+            value: "failed to decode".into(),
+            error: err.to_string(),
+        })?;
+
+    value
+        .split_once(' ')
+        .ok_or(TicxError::InvalidHeader {
+            header: "AUTHORIZATION",
+            value: value.to_string(),
+            error: "failed to retrieve token from header value".into(),
+        })
+        .map(|(bearer, raw_token)| raw_token.to_string())
+}
+
+fn box_error<B>(e: TicxError) -> Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, Error>>>> {
+    Box::pin(async move { Err(e.into()) })
 }
