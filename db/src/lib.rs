@@ -154,4 +154,26 @@ impl Db {
             .execute(&self.get_conn("delete ticket")?)
             .map_err(|err| DbError::query_error("delete ticket", err))
     }
+
+    #[tracing::instrument(skip(self, pwd))]
+    pub fn check_credentials(&self, usr: &str, pwd: &str) -> DbResult<dbo::User> {
+        let query = users_table
+            .filter(schema::users::username.eq(usr))
+            .filter(schema::users::password.eq(crypt(pwd, "gen_salt('bf', 8)")));
+
+        tracing::trace!(?query, "user authentication query");
+
+        // let found = query
+        //     .execute(&self.get_conn("user auth")?)
+        //     .map_err(|err| DbError::query_error("delete ticket", err))?;
+
+        let mut found = query
+            .load::<dbo::User>(&self.get_conn("user auth")?)
+            .map_err(|err| DbError::query_error("delete ticket", err))?;
+
+        match found.len() {
+            1 => Ok(found.pop().unwrap()),
+            _ => Err(DbError::not_found("user")),
+        }
+    }
 }

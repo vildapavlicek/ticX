@@ -1,3 +1,4 @@
+pub(super) mod auth;
 mod ticket;
 mod token;
 mod user;
@@ -33,7 +34,8 @@ macro_rules! routes {
 
 routes!(user_routes, user);
 routes!(ticket_routes, ticket);
-routes!(token_routes, token, get);
+routes!(auth_routes, auth, login);
+// routes!(token_routes, token, get);
 
 // routes!(
 //     test_name,
