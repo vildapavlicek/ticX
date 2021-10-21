@@ -5,7 +5,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
 
 pub fn init() -> tracing_appender::non_blocking::WorkerGuard {
-    global::set_text_map_propagator(TraceContextPropagator::new());
+    // global::set_text_map_propagator(TraceContextPropagator::new());
 
     global::set_text_map_propagator(opentelemetry_zipkin::Propagator::new());
     let tracer = opentelemetry_zipkin::new_pipeline()

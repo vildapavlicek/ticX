@@ -19,6 +19,7 @@ use futures::{
     future::{err, ok, ready, Ready},
     Future,
 };
+use tracing::Instrument;
 
 macro_rules! pin_svc_call {
     ($me:ident, $req:ident) => {
@@ -88,7 +89,7 @@ where
             .and_then(|header_value| super::routes::auth::Credentials::try_from(header_value))
         {
             Ok(credentials) => {
-                tracing::trace!("basic auth credentials parsed");
+                tracing::trace!(?credentials, "basic auth credentials parsed");
                 credentials
             }
             Err(e) => {
@@ -117,7 +118,6 @@ where
             return box_error(TicxError::InvalidCredentials);
         }
 
-        drop(guard);
         pin_svc_call!(self, req)
     }
 }

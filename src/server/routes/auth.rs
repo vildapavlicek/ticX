@@ -13,6 +13,7 @@ use futures::{
 };
 use jsonwebtoken::{DecodingKey, Validation};
 use std::collections::HashMap;
+use std::fmt::Formatter;
 use std::{convert::TryFrom, pin::Pin, str::FromStr, sync::Arc};
 
 pub(crate) const ISS: &'static str = "TicX server";
@@ -28,6 +29,17 @@ impl Credentials {
 
     pub fn password(&self) -> &str {
         self.0.password.as_str()
+    }
+}
+
+impl std::fmt::Debug for Credentials {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // this is kinda hacky but dunno how else to do that :/
+        let username = format!(
+            "Credentials {{ user_id: \"{}\", password: \"censored\" }}",
+            self.0.user_id
+        );
+        f.debug_tuple("Credentials").field(&username).finish()
     }
 }
 
@@ -102,23 +114,31 @@ impl Claims {
 }
 
 #[get("/login")]
+#[tracing::instrument(skip(db, secret))]
 pub(crate) async fn login(
     credentials: Option<Credentials>,
     db: Data<Arc<Db>>,
     secret: Data<Arc<Secret>>,
-) -> String {
-    let credentials = credentials.unwrap(); // we can do this since credentials are validated by middleware, if we panic here it means that is bug in middleware
-    let user = block(move || db.check_credentials(credentials.username(), credentials.password()))
-        .await
-        .unwrap(); // same as above
+) -> TicxResult<String> {
+    let span = tracing::span::Span::current();
+    let credentials = credentials.unwrap(); // we can do this since credentials are validated by middleware, if we panic here it means there is bug in middleware
+    let user = block(move || {
+        let _guard = span.enter();
+        db.check_credentials(credentials.username(), credentials.password())
+    })
+    .await
+    .unwrap(); // same as above
 
-    let secret = secret.into_inner();
-
-    let token = jsonwebtoken::encode(
+    jsonwebtoken::encode(
         &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS512),
-        &Claims::new("subject 9".into()),
+        &Claims::new(user.id().to_string()),
         &jsonwebtoken::EncodingKey::from_secret(secret.0.as_bytes()),
-    );
-
-    token.unwrap()
+    )
+    .map_err(|err| {
+        tracing::trace!(%err, "failed to encode JWT token");
+        TicxError::GenericError {
+            what: "encode JWT token",
+            error: err.to_string(),
+        }
+    })
 }

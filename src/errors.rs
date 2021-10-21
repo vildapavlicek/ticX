@@ -21,6 +21,8 @@ pub enum TicxError {
     Unknown,
     #[error("Failed to execute DB Query properly. Reason: {0}")]
     DbFail(String),
+    #[error("failed {what}. Reason: {error}")]
+    GenericError { what: &'static str, error: String },
 }
 
 // this shows error because it cannot indetify std::fmt::Display being derived

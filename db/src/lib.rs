@@ -29,7 +29,6 @@ pub struct Db {
 impl Db {
     #[tracing::instrument]
     pub fn connect(uri: &str) -> DbResult<Db> {
-        tracing::trace!("inside DB");
         let manager = ConnectionManager::<PgConnection>::new(uri);
         tracing::trace!("ConnectionManager created");
         diesel::r2d2::Builder::new()
