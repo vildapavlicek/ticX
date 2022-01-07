@@ -1,8 +1,7 @@
 use opentelemetry::global;
-use opentelemetry::sdk::{export::trace::stdout, propagation::TraceContextPropagator};
-use tracing_subscriber::layer::{Layered, SubscriberExt};
+use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::Registry;
 
 pub fn init() -> tracing_appender::non_blocking::WorkerGuard {
     // global::set_text_map_propagator(TraceContextPropagator::new());

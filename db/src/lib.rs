@@ -99,16 +99,27 @@ impl Db {
         diesel::update(users_table.find(user.id))
             .set(user)
             .execute(&self.get_conn("update user")?)
-            .map_err(|err| DbError::update_error("user", err))
-            .map(|rows_affected| {
+            .and_then(|rows_affected| {
                 tracing::debug!(%rows_affected, "updated user");
+                match rows_affected {
+                    0 => Err(diesel::NotFound),
+                    _ => Ok(()),
+                }
             })
+            .map_err(|err| DbError::update_error("user", err))
     }
 
     #[tracing::instrument(skip(self))]
     pub fn delete_user(&self, user_id: i32) -> DbResult<usize> {
         diesel::delete(users_table.filter(crate::schema::users::id.eq(user_id)))
             .execute(&self.get_conn("delete user")?)
+            .and_then(|rows_affected| {
+                tracing::debug!(%rows_affected, "delete user");
+                match rows_affected {
+                    0 => Err(diesel::NotFound),
+                    _ => Ok(rows_affected),
+                }
+            })
             .map_err(|err| DbError::query_error("delete user", err))
     }
 
