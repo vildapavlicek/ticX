@@ -35,18 +35,18 @@ impl actix_web::error::ResponseError for TicxError {
         }
     }
 }
-
-use db::errors::DbError;
-impl From<DbError> for TicxError {
-    fn from(db_error: DbError) -> Self {
-        match db_error {
-            DbError::InvalidResult => Self::Unknown,
-            DbError::InsertError { .. }
-            | DbError::UpdateError { .. }
-            | DbError::QueryExecuteError { .. } => Self::DbFail(db_error.to_string()),
-            // DbError::NoConnectionAvailable(_) => (),
-            // DbError::NotFound(_) => (),
-            _ => Self::Unknown,
-        }
-    }
-}
+//
+// use db::errors::DbError;
+// impl From<DbError> for TicxError {
+//     fn from(db_error: DbError) -> Self {
+//         match db_error {
+//             DbError::InvalidResult => Self::Unknown,
+//             DbError::InsertError { .. }
+//             | DbError::UpdateError { .. }
+//             | DbError::QueryExecuteError { .. } => Self::DbFail(db_error.to_string()),
+//             // DbError::NoConnectionAvailable(_) => (),
+//             // DbError::NotFound(_) => (),
+//             _ => Self::Unknown,
+//         }
+//     }
+// }
