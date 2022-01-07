@@ -1,7 +1,5 @@
-use crate::errors::{TicxError, TicxResult};
-use actix_web::{middleware::Logger, App};
+use actix_web::middleware::Logger;
 use actix_web_opentelemetry::RequestTracing;
-use std::str::FromStr;
 use std::sync::Arc;
 
 mod middlewares;
@@ -9,8 +7,9 @@ mod routes;
 
 #[tracing::instrument(skip(db))]
 pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "127.0.0.1:8080";
     let secret = Arc::new(routes::auth::Secret(String::from("my_super_jwt_secret")));
-    tracing::trace!("starting server");
+    tracing::trace!(?addr, "starting server");
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .data(db.clone())
@@ -30,7 +29,7 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
             .wrap(Logger::default())
             .wrap(RequestTracing::new())
     })
-    .bind("127.0.0.1:8080")
+    .bind(addr)
     .expect("failed to bind to localhost:8080")
     .run()
     .await?;

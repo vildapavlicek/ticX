@@ -1,14 +1,11 @@
 use std::convert::TryFrom;
-use std::marker::PhantomData;
 use std::{
     pin::Pin,
-    str::FromStr,
     sync::Arc,
     task::{Context, Poll},
 };
 
 use crate::errors::{TicxError, TicxResult};
-use actix_web::dev::Payload;
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     http::HeaderValue,
@@ -16,10 +13,9 @@ use actix_web::{
 };
 use db::Db;
 use futures::{
-    future::{err, ok, ready, Ready},
+    future::{ok, Ready},
     Future,
 };
-use tracing::Instrument;
 
 macro_rules! pin_svc_call {
     ($me:ident, $req:ident) => {
@@ -103,7 +99,7 @@ where
             "checking username & password"
         );
 
-        if let Err(e) = self
+        if let Err(_) = self
             .db
             .check_credentials(credentials.username(), credentials.password())
             .map_err(|err| {
@@ -183,12 +179,13 @@ where
             .headers()
             .get(actix_web::http::header::AUTHORIZATION)
             .and_then(|header_value| {
-                tracing::debug!(?header_value, "AUTHORIZATION header found");
+                tracing::debug!("AUTHORIZATION header found");
                 Some(header_value)
             })
-            .ok_or({
+            .ok_or(TicxError::MissingAuthHeader)
+            .map_err(|err| {
                 tracing::error!("AUTHORIZATION header not found");
-                TicxError::MissingAuthHeader
+                err
             }) {
             Ok(v) => match parse_token(v) {
                 Ok(t) => t,
@@ -218,13 +215,15 @@ where
             return box_error(TicxError::InvalidCredentials);
         }
 
+        tracing::trace!("JTW validation OK");
+
         drop(guard);
 
         pin_svc_call!(self, req)
     }
 }
 
-#[tracing::instrument]
+#[tracing::instrument(skip(header_value))]
 fn parse_token(header_value: &HeaderValue) -> TicxResult<String> {
     tracing::trace!("parsing token from header value");
     let value = header_value.to_str().map_err(|err| {
@@ -239,15 +238,18 @@ fn parse_token(header_value: &HeaderValue) -> TicxResult<String> {
     value
         .split_once(' ')
         .ok_or({
-            tracing::error!("AUTHORIZATION token in invalid format. Expected 'Bearer {{JWT}}'");
             TicxError::InvalidHeader {
                 header: "AUTHORIZATION",
                 value: value.to_string(),
                 error: "failed to retrieve token from header value".into(),
             }
         })
-        .map(|(bearer, raw_token)| {
-            tracing::trace!(%raw_token, "successfully parsed JWT from header");
+        .map_err(|err| {
+            tracing::error!("AUTHORIZATION token in invalid format. Expected 'Bearer {{JWT}}'");
+            err
+        })
+        .map(|(_bearer, raw_token)| {
+            tracing::trace!("successfully parsed JWT");
             raw_token.to_string()
         })
 }

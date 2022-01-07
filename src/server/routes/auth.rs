@@ -7,14 +7,9 @@ use actix_web::{
     FromRequest, HttpRequest,
 };
 use db::Db;
-use futures::{
-    future::{err, ok, ready, Ready},
-    Future,
-};
-use jsonwebtoken::{DecodingKey, Validation};
-use std::collections::HashMap;
+use futures::future::{err, ok, Ready};
 use std::fmt::Formatter;
-use std::{convert::TryFrom, pin::Pin, str::FromStr, sync::Arc};
+use std::{convert::TryFrom, str::FromStr, sync::Arc};
 
 pub(crate) const ISS: &'static str = "TicX server";
 pub(crate) const AUD: &'static str = "TicX user";

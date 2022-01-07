@@ -1,6 +1,5 @@
 pub(super) mod auth;
 mod ticket;
-mod token;
 mod user;
 
 use actix_web::get;

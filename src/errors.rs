@@ -1,5 +1,4 @@
 use actix_web::http::StatusCode;
-use std::fmt::{Display, Formatter};
 
 pub type TicxResult<T> = Result<T, TicxError>;
 
@@ -31,23 +30,23 @@ impl actix_web::error::ResponseError for TicxError {
         match self {
             Self::MissingAuthHeader => StatusCode::BAD_REQUEST,
             Self::InvalidToken(_) => StatusCode::UNAUTHORIZED,
-            Self::InvalidCredentials => StatusCode::FORBIDDEN,
+            Self::InvalidCredentials => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
 
-// use db::errors::DbError;
-// impl From<DbError> for TicxError {
-//     fn from(db_error: DbError) -> Self {
-//         match db_error {
-//             DbError::InvalidResult => Self::Unknown,
-//             DbError::InsertError { .. }
-//             | DbError::UpdateError { .. }
-//             | DbError::QueryExecuteError { .. } => Self::DbFail(db_error.to_string()),
-//             // DbError::NoConnectionAvailable(_) => (),
-//             // DbError::NotFound(_) => (),
-//             _ => Self::Unknown,
-//         }
-//     }
-// }
+use db::errors::DbError;
+impl From<DbError> for TicxError {
+    fn from(db_error: DbError) -> Self {
+        match db_error {
+            DbError::InvalidResult => Self::Unknown,
+            DbError::InsertError { .. }
+            | DbError::UpdateError { .. }
+            | DbError::QueryExecuteError { .. } => Self::DbFail(db_error.to_string()),
+            // DbError::NoConnectionAvailable(_) => (),
+            // DbError::NotFound(_) => (),
+            _ => Self::Unknown,
+        }
+    }
+}

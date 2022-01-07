@@ -3,12 +3,12 @@ use std::fmt::Formatter;
 
 #[derive(Debug, Queryable, AsChangeset)]
 pub struct Ticket {
-    pub(crate) id: i32,
-    pub(crate) author_id: i32,
-    pub(crate) description: String,
-    pub(crate) severity: i16,
-    pub(crate) status: i16,
-    pub(crate) created: chrono::NaiveDateTime,
+    pub id: i32,
+    pub author_id: i32,
+    pub description: String,
+    pub severity: i16,
+    pub status: i16,
+    pub created: chrono::NaiveDateTime,
 }
 
 impl Ticket {
@@ -56,12 +56,12 @@ impl NewTicket {
 
 #[derive(Queryable, AsChangeset)]
 pub struct User {
-    pub(crate) id: i32,
-    pub(crate) username: String,
-    pub(crate) password: String,
-    pub(crate) firstname: String,
-    pub(crate) lastname: String,
-    pub(crate) created: chrono::NaiveDateTime,
+    pub id: i32,
+    pub username: String,
+    pub password: String,
+    pub firstname: String,
+    pub lastname: String,
+    pub created: chrono::NaiveDateTime,
 }
 
 impl User {
@@ -104,20 +104,16 @@ impl std::fmt::Debug for User {
     }
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Insertable)]
 #[table_name = "users"]
-pub struct NewUser /*<'a>*/ {
-    /* pub(crate) username: &'a str,
-    pub(crate) password: &'a str,
-    pub(crate) firstname: &'a str,
-    pub(crate) lastname: &'a str, */
+pub struct NewUser {
     pub(crate) username: String,
     pub(crate) password: String,
     pub(crate) firstname: String,
     pub(crate) lastname: String,
 }
 
-impl NewUser /* <'a> */ {
+impl NewUser {
     pub fn new(username: String, password: String, firstname: String, lastname: String) -> Self {
         NewUser {
             username,
@@ -125,5 +121,16 @@ impl NewUser /* <'a> */ {
             firstname,
             lastname,
         }
+    }
+}
+
+impl std::fmt::Debug for NewUser {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NewUser")
+            .field("username", &self.username)
+            .field("password", &"*censored*")
+            .field("firstname", &self.firstname)
+            .field("lastname", &self.lastname)
+            .finish()
     }
 }
