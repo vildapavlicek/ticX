@@ -25,7 +25,7 @@ pub enum TicxError {
     GenericError { what: &'static str, error: String },
 }
 
-// this shows error because it cannot indetify std::fmt::Display being derived
+// this shows error because it cannot identify std::fmt::Display being derived
 impl actix_web::error::ResponseError for TicxError {
     fn status_code(&self) -> StatusCode {
         match self {

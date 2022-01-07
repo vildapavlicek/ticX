@@ -13,27 +13,28 @@ members = [
 ]
 
 [dependencies]
+#web
 actix-web = { version = "3.3.2" }
+serde = { version = "1.0.130", features = ["derive"] }
+jsonwebtoken = "7.2.0"
+http-auth-basic = "0.3.1"
 
-thiserror = "1.0.29"
-
+# open telemetry
+opentelemetry-zipkin = "0.14.0"
+actix-web-opentelemetry = "0.10.0"
 opentelemetry = "0.16.0"
 
+# logging & tracing
 tracing = "0.1.28"
 tracing-appender = "0.1.2"
 tracing-subscriber = { version = "0.2.24", features = ["tracing-log"] }
 tracing-opentelemetry = "0.15.0"
 
-serde = { version = "1.0.130", features = ["derive"] }
-opentelemetry-zipkin = "0.14.0"
-actix-web-opentelemetry = "0.10.0"
-
-jsonwebtoken = "7.2.0"
-
+# db
 db = {path = "./db"}
 
+#utils
+thiserror = "1.0.29"
 dotenv = "0.15.0"
-
 futures = "0.3.17"
-http-auth-basic = "0.3.1"
 chrono = "0.4.19"

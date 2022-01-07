@@ -13,7 +13,6 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
     tracing::trace!("starting server");
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
-            .wrap(RequestTracing::new())
             .data(db.clone())
             .data(secret.clone())
             .service(
@@ -29,6 +28,7 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
                 routes::auth_routes().wrap(middlewares::BasicAuthMiddleware { db: db.clone() }),
             )
             .wrap(Logger::default())
+            .wrap(RequestTracing::new())
     })
     .bind("127.0.0.1:8080")
     .expect("failed to bind to localhost:8080")
