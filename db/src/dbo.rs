@@ -85,6 +85,10 @@ impl User {
             ),
         }
     }
+
+    pub fn id(&self) -> i32 {
+        self.id
+    }
 }
 
 impl std::fmt::Debug for User {

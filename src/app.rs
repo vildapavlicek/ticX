@@ -12,7 +12,6 @@ impl TicXApp {
             .unwrap_or_else(|_| String::from("postgres://user:password@localhost:5432/ticx"));
 
         let db = Arc::new(actix_web::web::block(move || db::Db::connect(db_uri.as_str())).await?);
-        tracing::trace!("after DB");
         server::start(db).await
     }
 }
