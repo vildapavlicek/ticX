@@ -38,3 +38,7 @@ thiserror = "1.0.29"
 dotenv = "0.15.0"
 futures = "0.3.17"
 chrono = "0.4.19"
+
+## static linking OpenSSL for unix
+[target.'cfg(unix)'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
