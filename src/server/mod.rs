@@ -21,13 +21,16 @@ pub async fn start(db: Arc<db::Db>) -> Result<(), Box<dyn std::error::Error>> {
                     .service(routes::ticket_routes())
                     .wrap(middlewares::JWTValidationMiddleware {
                         secret: secret.clone(),
-                    }), // .service(routes::token_routes()), // .wrap(actix_web_httpauth::middleware::HttpAuthentication::bearer()),
+                    }),
             )
             .service(
                 routes::auth_routes().wrap(middlewares::BasicAuthMiddleware { db: db.clone() }),
             )
+            .service(actix_web::Scope::new("prom").service(routes::metrics_routes()))
             .wrap(Logger::default())
             .wrap(RequestTracing::new())
+            .wrap(middlewares::RequestsCounterMiddleware)
+            .wrap(middlewares::ResponseStatusCounterMiddleware)
     })
     .bind(addr)
     .expect("failed to bind to localhost:8080")

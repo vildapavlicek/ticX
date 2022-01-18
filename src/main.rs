@@ -1,5 +1,6 @@
 mod app;
 mod errors;
+mod metrics;
 mod server;
 mod tracer;
 

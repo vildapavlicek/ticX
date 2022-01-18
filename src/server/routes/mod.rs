@@ -1,4 +1,5 @@
 pub(super) mod auth;
+mod metrics;
 mod ticket;
 mod user;
 
@@ -34,10 +35,4 @@ macro_rules! routes {
 routes!(user_routes, user);
 routes!(ticket_routes, ticket);
 routes!(auth_routes, auth, login);
-// routes!(token_routes, token, get);
-
-// routes!(
-//     test_name,
-//     test_module,
-//     get_method & post_method & put_method
-// );
+routes!(metrics_routes, metrics, prometheus_metrics);
