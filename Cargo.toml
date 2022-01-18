@@ -38,6 +38,9 @@ thiserror = "1.0.29"
 dotenv = "0.15.0"
 futures = "0.3.17"
 chrono = "0.4.19"
+lazy_static = "1.4.0"
+
+prometheus = "0.13.0"
 
 ## static linking OpenSSL for unix
 [target.'cfg(unix)'.dependencies]
