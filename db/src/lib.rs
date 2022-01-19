@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 pub mod dbo;
 pub mod errors;
@@ -10,14 +12,17 @@ use crate::schema::{
     users::{dsl::*, table as users_table},
 };
 use dbo::{Ticket, User};
+use diesel::sql_types::Text;
 use diesel::{
     pg::PgConnection,
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
 use errors::{DbError, DbResult};
+use tracing::trace;
 
-use diesel::sql_types::Text;
+embed_migrations!("../migrations");
+
 diesel::sql_function!(fn crypt(pass: Text, salt: Text) -> Text);
 
 type PgPool = Pool<ConnectionManager<PgConnection>>;
@@ -31,15 +36,22 @@ impl Db {
     pub fn connect(uri: &str) -> DbResult<Db> {
         let manager = ConnectionManager::<PgConnection>::new(uri);
         tracing::trace!("ConnectionManager created");
-        diesel::r2d2::Builder::new()
-            .connection_timeout(std::time::Duration::from_secs(15)) // todo make this configurable
-            .max_size(1) // todo make this configurable BUG if increased connection fails most of the time
+        let db = diesel::r2d2::Builder::new()
+            .connection_timeout(std::time::Duration::from_secs(15))
+            .max_size(1)
             .build(manager)
             .map(|conn| {
                 tracing::trace!("connected to DB");
                 Db { inner: conn }
             })
-            .map_err(|err| DbError::connection_error(uri, err))
+            .map_err(|err| DbError::connection_error(uri, err))?;
+
+        tracing::trace!("running pending migrations");
+        diesel_migrations::any_pending_migrations(&db.get_conn("migrations")?)
+            .map_err(|err| DbError::MigrationFailure(err.to_string()))?;
+
+        tracing::trace!("DB set up OK");
+        Ok(db)
     }
 
     #[tracing::instrument(skip(self))]
@@ -68,29 +80,19 @@ impl Db {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn insert_user(&self, user: dbo::NewUser) -> DbResult<()> {
-        /* diesel::insert_into(users_table)
-        .values(&user)
-        .execute(&self.get_conn("insert user")?)
-        .map_err(|err| DbError::insert_error("users", err))
-        .map(|rows_affected| {
-            tracing::debug!(rows_affected, "inserted new user");
-        }) */
-
-        let query = diesel::insert_into(users_table).values((
-            username.eq(user.username),
-            password.eq(crypt(user.password, "gen_salt('bf', 8)")),
-            firstname.eq(user.firstname),
-            lastname.eq(user.lastname),
-        ));
-
-        // tracing::trace!(?query, "insert query"); //also logs password, so uncomment if you need to debug query
-
-        query
-            .execute(&self.get_conn("insert user")?)
-            .map_err(|err| DbError::insert_error("users", err))
-            .map(|rows_affected| {
-                tracing::debug!(rows_affected, "inserted new user");
+    pub fn insert_user(&self, user: dbo::NewUser) -> DbResult<User> {
+        diesel::insert_into(users_table)
+            .values((
+                username.eq(user.username),
+                password.eq(crypt(user.password, "gen_salt('bf', 8)")),
+                firstname.eq(user.firstname),
+                lastname.eq(user.lastname),
+            ))
+            .get_result::<User>(&self.get_conn("insert user")?)
+            .map_err(|e| DbError::insert_error("user", e))
+            .and_then(|u| {
+                trace!("inserted new user");
+                Ok(u)
             })
     }
 

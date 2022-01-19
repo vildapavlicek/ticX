@@ -18,6 +18,7 @@ pub fn init() -> tracing_appender::non_blocking::WorkerGuard {
     Registry::default()
         .with(tracing_subscriber::EnvFilter::new(
             "actix_web=trace,ticx=trace,db=trace, diesel=trace",
+            // "trace",
         ))
         .with(tracing_subscriber::fmt::layer())
         .with(

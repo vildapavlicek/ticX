@@ -169,6 +169,7 @@ where
     fn call(&mut self, req: Self::Request) -> Self::Future {
         tracing_span!(TRACE, JWTValidationService, guard);
 
+        #[allow(unused)]
         #[derive(serde::Deserialize, Debug)]
         struct Claims {
             iss: String,
