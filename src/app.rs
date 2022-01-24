@@ -11,7 +11,7 @@ impl TicXApp {
         let db_uri = dotenv::var("POSTGRES_URI")
             .unwrap_or_else(|_| String::from("postgres://user:password@localhost:5432/ticx"));
 
-        let db = Arc::new(actix_web::web::block(move || db::Db::connect(db_uri.as_str())).await?);
+        let db = Arc::new(db::Db::connect(db_uri.as_str())?);
         server::start(db).await
     }
 }

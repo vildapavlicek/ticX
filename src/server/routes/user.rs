@@ -7,12 +7,12 @@ use std::sync::Arc;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct User {
-    username: String,
-    password: String,
-    firstname: String,
-    lastname: String,
-    id: Option<i32>,
-    role: String,
+    pub(super) username: String,
+    pub(super) password: String,
+    pub(super) firstname: String,
+    pub(super) lastname: String,
+    pub(super) id: Option<i32>,
+    pub(super) role: String,
 }
 
 impl From<User> for db::dbo::NewUser {
@@ -66,7 +66,7 @@ pub async fn get(id: web::Path<i32>, db: web::Data<Arc<Db>>) -> TicxResult<Json<
     web::block(move || db.select_user(id.into_inner()))
         .await
         .map(|u| Json(u.into()))
-        .map_err(|err| TicxError::DbFail(err.to_string()))
+        .map_err(TicxError::from)
 }
 
 #[get("")]

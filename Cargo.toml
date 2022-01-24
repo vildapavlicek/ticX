@@ -42,6 +42,10 @@ lazy_static = "1.4.0"
 
 prometheus = "0.13.0"
 
+[dev-dependencies]
+actix-rt = "2.6.0"
+uuid = { version = "0.8.2", features = ["v4"] }
+
 ## static linking OpenSSL for unix
 [target.'cfg(unix)'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }

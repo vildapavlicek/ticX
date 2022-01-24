@@ -1,3 +1,6 @@
+use crate::Db;
+use diesel::result::Error;
+
 pub type DbResult<T> = Result<T, DbError>;
 
 #[derive(thiserror::Error, Debug)]
@@ -20,6 +23,8 @@ pub enum DbError {
     InvalidResult,
     #[error("Unexpected error: {0}")]
     Unknown(String),
+    #[error("database error: {0}")]
+    DatabaseError(String),
 }
 
 impl DbError {
@@ -51,12 +56,16 @@ impl DbError {
     //     }
     // }
 
-    pub(crate) fn query_error<T: std::fmt::Display>(query: &'static str, err: T) -> Self {
+    pub(crate) fn query_error<T: std::fmt::Display + std::convert::Into<DbError>>(
+        query: &'static str,
+        err: T,
+    ) -> Self {
         tracing::error!(%query, %err, "failed to execute query");
-        Self::QueryExecuteError {
-            query,
-            error: err.to_string(),
-        }
+        err.into()
+        // Self::QueryExecuteError {
+        //     query,
+        //     error: err.to_string(),
+        // }
     }
 
     pub(crate) fn connection_not_available<T: std::fmt::Display>(
@@ -86,5 +95,15 @@ impl DbError {
     pub(crate) fn not_found(what: &'static str) -> Self {
         tracing::error!(%what, "requested resource not found in DB");
         Self::NotFound(what)
+    }
+}
+
+impl From<diesel::result::Error> for DbError {
+    fn from(err: Error) -> Self {
+        match err {
+            diesel::result::Error::DatabaseError(_, _) => Self::DatabaseError(err.to_string()),
+            diesel::result::Error::NotFound => Self::NotFound("failed to find requested data"),
+            _ => DbError::Unknown(err.to_string()),
+        }
     }
 }

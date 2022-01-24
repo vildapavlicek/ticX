@@ -1,5 +1,7 @@
 pub(super) mod auth;
 mod metrics;
+#[cfg(test)]
+mod tests;
 mod ticket;
 mod user;
 
