@@ -1,4 +1,5 @@
 use crate::errors::{TicxError, TicxResult};
+use crate::metrics::*;
 use actix_web::{
     dev::Payload,
     get,
@@ -117,12 +118,19 @@ pub(crate) async fn login(
 ) -> TicxResult<String> {
     let span = tracing::span::Span::current();
     let credentials = credentials.unwrap(); // we can do this since credentials are validated by middleware, if we panic here it means there is bug in middleware
+
+    let timer = DB_QUERY_HISTOGRAM
+        .with_label_values(&[DB_TABLE_USERS, "SELECT"])
+        .start_timer();
+
     let user = block(move || {
         let _guard = span.enter();
         db.check_credentials(credentials.username(), credentials.password())
     })
     .await
     .unwrap(); // same as above
+
+    timer.observe_duration();
 
     jsonwebtoken::encode(
         &jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS512),
