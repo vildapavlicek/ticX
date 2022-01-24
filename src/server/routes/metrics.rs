@@ -4,8 +4,6 @@ use prometheus::Encoder;
 
 #[get("")]
 pub async fn prometheus_metrics() -> TicxResult<String> {
-    crate::metrics::VALID_REQUESTS_COUNTER.inc();
-
     let mut buffer = vec![];
     let encoder = prometheus::TextEncoder::new();
     let metrics_family = prometheus::gather();

@@ -261,10 +261,53 @@ fn parse_token(header_value: &HeaderValue) -> TicxResult<String> {
 }
 
 // ---------------------------------------------------------------------------------------------- \\
+//
+// pub(super) struct RequestsCounterMiddleware;
+//
+// impl<S, B> Transform<S> for RequestsCounterMiddleware
+// where
+//     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+//     S::Future: 'static,
+// {
+//     type Request = ServiceRequest;
+//     type Response = ServiceResponse<B>;
+//     type Error = Error;
+//     type Transform = RequestCounterService<S>;
+//     type InitError = ();
+//     type Future = Ready<Result<Self::Transform, Self::InitError>>;
+//
+//     fn new_transform(&self, service: S) -> Self::Future {
+//         ok(RequestCounterService { service })
+//     }
+// }
+//
+// pub(super) struct RequestCounterService<S> {
+//     service: S,
+// }
+//
+// impl<'a, S, B> Service for RequestCounterService<S>
+// where
+//     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+//     S::Future: 'static,
+// {
+//     type Request = ServiceRequest;
+//     type Response = ServiceResponse<B>;
+//     type Error = Error;
+//     type Future = Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, Error>>>>;
+//
+//     fn poll_ready(&mut self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+//         self.service.poll_ready(ctx)
+//     }
+//
+//     fn call(&mut self, req: Self::Request) -> Self::Future {
+//         crate::metrics::REQUESTS_COUNTER.inc();
+//         pin_svc_call!(self, req)
+//     }
+// }
 
-pub(super) struct RequestsCounterMiddleware;
+pub(super) struct HttpMetricsCounterMiddlware;
 
-impl<S, B> Transform<S> for RequestsCounterMiddleware
+impl<'a, S, B> Transform<S> for HttpMetricsCounterMiddlware
 where
     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -272,20 +315,22 @@ where
     type Request = ServiceRequest;
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Transform = RequestCounterService<S>;
+    type Transform = HttpMetricsCounterService<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ok(RequestCounterService { service })
+        ok(HttpMetricsCounterService { service })
     }
 }
 
-pub(super) struct RequestCounterService<S> {
+use crate::metrics::*;
+
+pub(super) struct HttpMetricsCounterService<S> {
     service: S,
 }
 
-impl<'a, S, B> Service for RequestCounterService<S>
+impl<'a, S, B> Service for HttpMetricsCounterService<S>
 where
     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
@@ -300,88 +345,36 @@ where
     }
 
     fn call(&mut self, req: Self::Request) -> Self::Future {
-        crate::metrics::REQUESTS_COUNTER.inc();
-        pin_svc_call!(self, req)
-    }
-}
+        let timer = HTTP_REQ_HISTOGRAM
+            .with_label_values(&[req.method().as_str()])
+            .start_timer();
 
-pub(super) struct ResponseStatusCounterMiddleware;
+        HTTP_REQUEST_COUNTER
+            .with_label_values(&[req.method().as_str()])
+            .inc();
 
-impl<'a, S, B> Transform<S> for ResponseStatusCounterMiddleware
-where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-{
-    type Request = ServiceRequest;
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Transform = ResponseStatusCounterService<S>;
-    type InitError = ();
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
-
-    fn new_transform(&self, service: S) -> Self::Future {
-        ok(ResponseStatusCounterService { service })
-    }
-}
-
-pub(super) struct ResponseStatusCounterService<S> {
-    service: S,
-}
-
-impl<'a, S, B> Service for ResponseStatusCounterService<S>
-where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-{
-    type Request = ServiceRequest;
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<ServiceResponse<B>, Error>>>>;
-
-    fn poll_ready(&mut self, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(ctx)
-    }
-
-    fn call(&mut self, req: Self::Request) -> Self::Future {
-        let start = std::time::Instant::now();
         let fut = self.service.call(req);
 
         Box::pin(async move {
-            match fut.await {
+            let res = match fut.await {
                 Ok(res) => {
-                    crate::metrics::RESPONSE_COUNTER.inc();
-                    let status = res.status();
-                    status_counter(status);
-                    duration_counter(start.elapsed().as_secs_f64());
+                    HTTP_RESPONSE_COUNTER
+                        .with_label_values(&[res.status().as_str()])
+                        .inc();
                     Ok(res)
                 }
                 Err(e) => {
-                    crate::metrics::ERROR_RESPONSE_COUNTER.inc();
-                    crate::metrics::RESPONSE_COUNTER.inc();
                     let status = e.as_response_error().status_code();
-                    status_counter(status);
-                    duration_counter(start.elapsed().as_secs_f64());
+                    HTTP_RESPONSE_COUNTER
+                        .with_label_values(&[status.as_str()])
+                        .inc();
                     Err(e)
                 }
-            }
+            };
+
+            timer.observe_duration();
+
+            res
         })
     }
-}
-
-fn status_counter(status: StatusCode) {
-    match status {
-        StatusCode::OK => crate::metrics::OK_COUNTER.inc(),
-        StatusCode::BAD_REQUEST => crate::metrics::BAD_REQUEST_COUNTER.inc(),
-        StatusCode::NOT_FOUND => {
-            println!("not found");
-            crate::metrics::NOT_FOUND_COUNTER.inc()
-        }
-        StatusCode::UNAUTHORIZED => crate::metrics::UNAUTHORIZED_COUNTER.inc(),
-        StatusCode::INTERNAL_SERVER_ERROR => crate::metrics::INTERNAL_SRV_ERR_COUNTER.inc(),
-        _ => (),
-    }
-}
-
-fn duration_counter(dur: f64) {
-    crate::metrics::REQUEST_PROCESS_TIME_TOTAL.inc_by(dur);
 }
